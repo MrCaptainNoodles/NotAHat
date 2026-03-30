@@ -69,9 +69,11 @@ function render() {
         case 'DRAW':
             UI.status.innerText = `${currentPlayer.name}'s turn. Click the center deck to draw.`;
             UI.card.className = 'card hidden clickable'; 
-            // We ensure the deck arrow is re-applied if it was cleared
+            
+            // This line is vital to show the deck image!
             const deckDir = gameState.itemDirections[gameState.deck[0]];
             UI.card.innerHTML = `<img src="${deckDir}.png" class="card-back-icon" alt="${deckDir}">`;
+            
             UI.card.onclick = () => socket.emit('drawCard'); 
             break;
 
