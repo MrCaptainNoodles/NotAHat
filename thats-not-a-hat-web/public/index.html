@@ -14,13 +14,22 @@
         </header>
 
         <div id="lobby-area" class="lobby-area">
-            <h2>Waiting for players...</h2>
-            <div>
+            <h2>Lobby</h2>
+            
+            <div id="setup-controls">
                 <input type="text" id="player-name-input" placeholder="Enter Player Name" autocomplete="off">
-                <button id="join-btn">Add Player</button>
+                <div style="margin-top: 15px; display: flex; gap: 10px; justify-content: center;">
+                    <button id="host-btn">Host Game</button>
+                    <button id="join-btn" class="secondary">Join Room</button>
+                </div>
             </div>
-            <div id="lobby-player-list" class="lobby-player-list"></div>
-            <button id="start-game-btn" class="hidden">Start Game</button>
+
+            <div id="room-info" class="hidden">
+                <h3 id="room-code-display" style="color: #0fbcf9;"></h3>
+                <p style="font-size: 0.9rem; margin-bottom: 15px;">Share the URL with friends so they can join!</p>
+                <div id="lobby-player-list" class="lobby-player-list"></div>
+                <button id="start-game-btn" class="hidden" style="margin-top: 15px;">Start Game</button>
+            </div>
         </div>
 
         <main id="play-area" class="play-area hidden">

@@ -1,8 +1,10 @@
 // Connect to the backend server
 const socket = io();
 
-// Local copy of the state, updated constantly by the server
+// Local copy of the state
 let gameState = null;
+let currentRoomId = null;
+let amIHost = false;
 
 // --- DOM ELEMENTS ---
 const UI = {
@@ -12,7 +14,11 @@ const UI = {
     lobbyArea: document.getElementById('lobby-area'),
     playArea: document.getElementById('play-area'),
     playerNameInput: document.getElementById('player-name-input'),
+    hostBtn: document.getElementById('host-btn'),
     joinBtn: document.getElementById('join-btn'),
+    setupControls: document.getElementById('setup-controls'),
+    roomInfo: document.getElementById('room-info'),
+    roomCodeDisplay: document.getElementById('room-code-display'),
     lobbyPlayerList: document.getElementById('lobby-player-list'),
     startGameBtn: document.getElementById('start-game-btn'),
     modal: document.getElementById('pass-modal'),
@@ -22,10 +28,46 @@ const UI = {
     cancelPassBtn: document.getElementById('cancel-pass-btn')
 };
 
+// Check if a friend sent us a link with a room code!
+window.onload = () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomFromUrl = urlParams.get('room');
+    if (roomFromUrl) {
+        currentRoomId = roomFromUrl;
+        UI.hostBtn.style.display = 'none'; // Hide host button if joining a specific room
+        UI.joinBtn.innerText = `Join Room ${roomFromUrl}`;
+        UI.status.innerText = `Ready to join room ${roomFromUrl}`;
+    } else {
+        UI.status.innerText = "Welcome to Memory Bluff!";
+    }
+};
+
 // --- LISTEN FOR SERVER UPDATES ---
 socket.on('stateUpdate', (newState) => {
     gameState = newState;
+    amIHost = (gameState.hostId === socket.id);
     render();
+});
+
+socket.on('roomCreated', (roomId) => {
+    currentRoomId = roomId;
+    // Update the browser URL without refreshing so they can copy-paste it
+    window.history.pushState({}, '', `?room=${roomId}`);
+    UI.setupControls.classList.add('hidden');
+    UI.roomInfo.classList.remove('hidden');
+    UI.roomCodeDisplay.innerText = `Room Code: ${roomId}`;
+});
+
+socket.on('joinedRoom', (roomId) => {
+    currentRoomId = roomId;
+    window.history.pushState({}, '', `?room=${roomId}`);
+    UI.setupControls.classList.add('hidden');
+    UI.roomInfo.classList.remove('hidden');
+    UI.roomCodeDisplay.innerText = `Room Code: ${roomId}`;
+});
+
+socket.on('errorMsg', (msg) => {
+    alert(msg);
 });
 
 // --- RENDER LOGIC ---
@@ -37,15 +79,20 @@ function renderLobby() {
         UI.lobbyPlayerList.appendChild(pDiv);
     });
 
-    if (gameState.players.length >= 2) {
+    // Only the host gets to click the Start Game button
+    if (amIHost && gameState.players.length >= 2) {
         UI.startGameBtn.classList.remove('hidden');
+    } else if (!amIHost && gameState.players.length >= 2) {
+        UI.status.innerText = "Waiting for host to start the game...";
+        UI.startGameBtn.classList.add('hidden');
     } else {
+        UI.status.innerText = "Waiting for more players to join...";
         UI.startGameBtn.classList.add('hidden');
     }
 }
 
 function render() {
-    if (!gameState) return; // Wait until server sends first state
+    if (!gameState) return;
 
     if (gameState.phase === 'LOBBY') {
         UI.lobbyArea.classList.remove('hidden');
@@ -61,6 +108,11 @@ function render() {
     UI.controls.innerHTML = ''; 
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
 
+    // Ensure buttons only appear if it is ACTUALLY the player's turn 
+    // (so player 2 can't click player 1's buttons)
+    const isMyTurn = (currentPlayer && currentPlayer.socketId === socket.id);
+    const amITarget = (gameState.targetPlayerIndex !== null && gameState.players[gameState.targetPlayerIndex].socketId === socket.id);
+
     switch(gameState.phase) {
         case 'ANNOUNCE':
             UI.status.innerText = `Memorize everyone's starting cards! Game starts in ${gameState.countdown}...`;
@@ -68,17 +120,17 @@ function render() {
 
         case 'DRAW':
             UI.status.innerText = `${currentPlayer.name}'s turn. Click the center deck to draw.`;
-            UI.card.className = 'card hidden clickable'; 
+            UI.card.className = 'card hidden' + (isMyTurn ? ' clickable' : ''); 
             
-            // This line is vital to show the deck image!
             const deckDir = gameState.itemDirections[gameState.deck[0]];
             UI.card.innerHTML = `<img src="${deckDir}.png" class="card-back-icon" alt="${deckDir}">`;
             
-            UI.card.onclick = () => socket.emit('drawCard'); 
+            if (isMyTurn) UI.card.onclick = () => socket.emit('drawCard'); 
+            else UI.card.onclick = null;
             break;
 
         case 'HOLDING':
-            UI.status.innerText = `${currentPlayer.name}, click your OLD card to pass it.`;
+            UI.status.innerText = isMyTurn ? `Your turn! Click your OLD card to pass it.` : `Waiting for ${currentPlayer.name} to pass...`;
             UI.card.style.display = 'none'; 
             break;
 
@@ -90,26 +142,30 @@ function render() {
             const targetPlayer = gameState.players[gameState.targetPlayerIndex];
             UI.status.innerText = `${currentPlayer.name} passed a "${gameState.declaredItem}" to ${targetPlayer.name}.`;
             
-            const acceptBtn = document.createElement('button');
-            acceptBtn.innerText = "Accept";
-            acceptBtn.onclick = () => socket.emit('acceptCard');
+            if (amITarget) {
+                const acceptBtn = document.createElement('button');
+                acceptBtn.innerText = "Accept";
+                acceptBtn.onclick = () => socket.emit('acceptCard');
 
-            const challengeBtn = document.createElement('button');
-            challengeBtn.className = "danger";
-            challengeBtn.innerText = "Challenge!";
-            challengeBtn.onclick = () => socket.emit('challengeCard');
+                const challengeBtn = document.createElement('button');
+                challengeBtn.className = "danger";
+                challengeBtn.innerText = "Challenge!";
+                challengeBtn.onclick = () => socket.emit('challengeCard');
 
-            UI.controls.append(acceptBtn, challengeBtn);
+                UI.controls.append(acceptBtn, challengeBtn);
+            }
             break;
 
         case 'REVEAL':
             UI.card.className = 'card';
             UI.card.innerHTML = `<img src="${gameState.actualItem}.png" alt="${gameState.actualItem}">`;
             
-            const nextBtn = document.createElement('button');
-            nextBtn.innerText = "Next Round";
-            nextBtn.onclick = () => socket.emit('nextRound');
-            UI.controls.appendChild(nextBtn);
+            if (amIHost) {
+                const nextBtn = document.createElement('button');
+                nextBtn.innerText = "Next Round";
+                nextBtn.onclick = () => socket.emit('nextRound');
+                UI.controls.appendChild(nextBtn);
+            }
             break;
 
         case 'GAME_OVER':
@@ -119,11 +175,13 @@ function render() {
             const losingPlayer = gameState.players.find(p => p.penalties >= gameState.maxPenalties);
             UI.status.innerText = `GAME OVER! ${losingPlayer.name} has reached ${gameState.maxPenalties} penalties!`;
             
-            const restartBtn = document.createElement('button');
-            restartBtn.className = "danger";
-            restartBtn.innerText = "Play Again";
-            restartBtn.onclick = () => socket.emit('fullReset');
-            UI.controls.appendChild(restartBtn);
+            if (amIHost) {
+                const restartBtn = document.createElement('button');
+                restartBtn.className = "danger";
+                restartBtn.innerText = "Play Again";
+                restartBtn.onclick = () => socket.emit('fullReset');
+                UI.controls.appendChild(restartBtn);
+            }
             break;
     }
 }
@@ -141,13 +199,15 @@ function renderPlayers() {
         const y = Math.sin(angle) * radius + centerOffset;
 
         const seat = document.createElement('div');
-        seat.className = `player-seat ${index === (gameState.phase === 'RESPOND' ? gameState.targetPlayerIndex : gameState.currentPlayerIndex) ? 'active' : ''}`;
+        const isActive = index === (gameState.phase === 'RESPOND' ? gameState.targetPlayerIndex : gameState.currentPlayerIndex);
+        seat.className = `player-seat ${isActive ? 'active' : ''}`;
         seat.style.left = `${x}px`;
         seat.style.top = `${y}px`;
 
         let handHTML = '<div class="player-hand">';
         p.hand.forEach((card, cardIndex) => {
-            const isClickable = (gameState.phase === 'HOLDING' && index === gameState.currentPlayerIndex && cardIndex === 0);
+            // Security: Only make the card clickable if it's YOUR turn and YOUR card
+            const isClickable = (gameState.phase === 'HOLDING' && index === gameState.currentPlayerIndex && cardIndex === 0 && p.socketId === socket.id);
             const clickAttr = isClickable ? `onclick="openPassMenu()"` : '';
             const clickClass = isClickable ? 'clickable' : '';
 
@@ -159,8 +219,10 @@ function renderPlayers() {
         });
         handHTML += '</div>';
 
+        // Add a host crown icon next to the host's name
+        const hostIcon = (gameState.hostId === p.socketId) ? '👑 ' : '';
         seat.innerHTML = `
-            <div>${p.name}</div>
+            <div>${hostIcon}${p.name}</div>
             <div style="font-size: 0.8rem">Penalties: ${p.penalties}</div>
             ${handHTML}
         `;
@@ -186,10 +248,27 @@ function renderPlayers() {
 }
 
 // --- BUTTON ACTIONS (Emitting to Server) ---
+UI.hostBtn.onclick = () => {
+    const name = UI.playerNameInput.value.trim();
+    if (!name) return alert("Please enter your name first!");
+    socket.emit('hostGame', name);
+    UI.playerNameInput.value = ''; 
+};
+
 UI.joinBtn.onclick = () => {
     const name = UI.playerNameInput.value.trim();
-    if (!name) return;
-    socket.emit('joinGame', name);
+    if (!name) return alert("Please enter your name first!");
+    
+    if (currentRoomId) {
+        // Joining via a shared URL parameter
+        socket.emit('joinGame', { name: name, roomId: currentRoomId });
+    } else {
+        // Fallback: If they click join without a URL, prompt for the code
+        const manualCode = prompt("Enter Room Code:");
+        if (manualCode) {
+            socket.emit('joinGame', { name: name, roomId: manualCode.trim() });
+        }
+    }
     UI.playerNameInput.value = ''; 
 };
 
@@ -243,5 +322,3 @@ UI.submitPassBtn.onclick = () => {
     });
     UI.modal.classList.add('hidden');
 };
-
-UI.status.innerText = "Connecting to server...";

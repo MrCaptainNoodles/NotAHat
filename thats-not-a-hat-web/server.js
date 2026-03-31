@@ -8,51 +8,115 @@ const io = new Server(server);
 
 app.use(express.static('public'));
 
-// --- THE MASTER GAME STATE ---
-let gameState = {
-    players: [],
-    items: ['hat', 'mug', 'box', 'pizza', 'guitar'],
-    directions: ['left', 'right', 'any'],
-    currentPlayerIndex: 0,
-    targetPlayerIndex: null,
-    actualItem: null,
-    declaredItem: null,
-    passDirectionRule: 'any',
-    itemDirections: {},
-    deck: [],
-    transitCard: null,
-    maxPenalties: 3,
-    phase: 'LOBBY',
-    countdown: 0
-};
+// --- ROOM STATE MANAGER ---
+// We now store multiple games in a dictionary keyed by Room ID
+const rooms = {};
 
-// Helper to broadcast state to all players
-function syncAll() {
-    io.emit('stateUpdate', gameState);
+function createGameState(hostSocketId) {
+    return {
+        hostId: hostSocketId, // The socket ID of the lobby creator
+        players: [],
+        items: ['hat', 'mug', 'box', 'pizza', 'guitar'],
+        directions: ['left', 'right', 'any'],
+        currentPlayerIndex: 0,
+        targetPlayerIndex: null,
+        actualItem: null,
+        declaredItem: null,
+        passDirectionRule: 'any',
+        itemDirections: {},
+        deck: [],
+        transitCard: null,
+        maxPenalties: 3,
+        phase: 'LOBBY',
+        countdown: 0
+    };
+}
+
+// Generate a random 4-letter/number code
+function generateRoomCode() {
+    return Math.random().toString(36).substring(2, 6).toUpperCase();
+}
+
+function syncRoom(roomId) {
+    if (rooms[roomId]) {
+        io.to(roomId).emit('stateUpdate', rooms[roomId]);
+    }
 }
 
 io.on('connection', (socket) => {
     console.log(`Player connected: ${socket.id}`);
     
-    // Immediately give the new player the current board state
-    socket.emit('stateUpdate', gameState);
+    // Track which room this specific socket is in
+    let myRoomId = null;
 
-    socket.on('joinGame', (name) => {
-        if (gameState.phase !== 'LOBBY') return;
-        gameState.players.push({
-            id: gameState.players.length,
+    // --- LOBBY LOGIC ---
+    socket.on('hostGame', (name) => {
+        const roomId = generateRoomCode();
+        myRoomId = roomId;
+        socket.join(roomId);
+        
+        rooms[roomId] = createGameState(socket.id);
+        rooms[roomId].players.push({
+            id: 0,
             socketId: socket.id,
             name: name,
             penalties: 0,
             hand: []
         });
-        syncAll();
+        
+        socket.emit('roomCreated', roomId);
+        syncRoom(roomId);
     });
 
+    socket.on('joinGame', (data) => {
+        const name = data.name;
+        const roomId = data.roomId.toUpperCase();
+        const room = rooms[roomId];
+        
+        if (!room) {
+            socket.emit('errorMsg', 'Room not found!');
+            return;
+        }
+
+        myRoomId = roomId;
+        socket.join(roomId);
+
+        // Rejoin Logic: If they closed the page, reconnect them to their old character
+        const existingPlayer = room.players.find(p => p.name === name);
+        if (existingPlayer) {
+            existingPlayer.socketId = socket.id;
+            // Restore host powers if they were the host or the first player
+            if (room.hostId === existingPlayer.socketId || room.players[0].name === name) {
+               room.hostId = socket.id;
+            }
+        } else {
+            // Prevent joining mid-game if they are a brand new player
+            if (room.phase !== 'LOBBY') {
+                socket.emit('errorMsg', 'Game already started!');
+                return;
+            }
+            room.players.push({
+                id: room.players.length,
+                socketId: socket.id,
+                name: name,
+                penalties: 0,
+                hand: []
+            });
+        }
+        
+        socket.emit('joinedRoom', roomId);
+        syncRoom(roomId);
+    });
+
+    // --- GAMEPLAY LOGIC ---
     socket.on('startGame', () => {
+        if (!myRoomId || !rooms[myRoomId]) return;
+        const gameState = rooms[myRoomId];
+        
+        // Security check: Only the host can start the game
+        if (socket.id !== gameState.hostId) return;
         if (gameState.players.length < 2 || gameState.players.length >= gameState.items.length) return;
 
-        // Shuffle and assign directions
         gameState.items.forEach(item => {
             if (!gameState.itemDirections[item]) {
                 gameState.itemDirections[item] = gameState.directions[Math.floor(Math.random() * gameState.directions.length)];
@@ -68,22 +132,25 @@ io.on('connection', (socket) => {
         gameState.deck = [shuffledItems[gameState.players.length]];
         gameState.phase = 'ANNOUNCE';
         gameState.countdown = 3;
-        syncAll();
+        syncRoom(myRoomId);
 
-        // Server-side countdown timer
         const timer = setInterval(() => {
-            gameState.countdown--;
-            if (gameState.countdown > 0) {
-                syncAll();
+            if (!rooms[myRoomId]) { clearInterval(timer); return; }
+            rooms[myRoomId].countdown--;
+            
+            if (rooms[myRoomId].countdown > 0) {
+                syncRoom(myRoomId);
             } else {
                 clearInterval(timer);
-                gameState.phase = 'DRAW';
-                syncAll();
+                rooms[myRoomId].phase = 'DRAW';
+                syncRoom(myRoomId);
             }
         }, 1000);
     });
 
     socket.on('drawCard', () => {
+        if (!myRoomId || !rooms[myRoomId]) return;
+        const gameState = rooms[myRoomId];
         if (gameState.phase !== 'DRAW') return;
         
         const currentPlayer = gameState.players[gameState.currentPlayerIndex];
@@ -93,10 +160,12 @@ io.on('connection', (socket) => {
         currentPlayer.hand.push(drawnCard);
         gameState.passDirectionRule = currentPlayer.hand[0].direction;
         gameState.phase = 'HOLDING';
-        syncAll();
+        syncRoom(myRoomId);
     });
 
     socket.on('passCard', (data) => {
+        if (!myRoomId || !rooms[myRoomId]) return;
+        const gameState = rooms[myRoomId];
         if (gameState.phase !== 'HOLDING') return;
         
         const passingPlayer = gameState.players[gameState.currentPlayerIndex];
@@ -105,10 +174,12 @@ io.on('connection', (socket) => {
         gameState.declaredItem = data.declaredItem;
         gameState.targetPlayerIndex = data.targetPlayerIndex;
         gameState.phase = 'RESPOND';
-        syncAll();
+        syncRoom(myRoomId);
     });
 
     socket.on('acceptCard', () => {
+        if (!myRoomId || !rooms[myRoomId]) return;
+        const gameState = rooms[myRoomId];
         if (gameState.phase !== 'RESPOND') return;
         
         const targetPlayer = gameState.players[gameState.targetPlayerIndex];
@@ -117,10 +188,12 @@ io.on('connection', (socket) => {
         gameState.currentPlayerIndex = gameState.targetPlayerIndex;
         gameState.targetPlayerIndex = null;
         gameState.phase = 'HOLDING';
-        syncAll();
+        syncRoom(myRoomId);
     });
 
     socket.on('challengeCard', () => {
+        if (!myRoomId || !rooms[myRoomId]) return;
+        const gameState = rooms[myRoomId];
         if (gameState.phase !== 'RESPOND') return;
         
         const isBluff = gameState.actualItem !== gameState.declaredItem;
@@ -136,34 +209,39 @@ io.on('connection', (socket) => {
         } else {
             gameState.phase = 'REVEAL';
         }
-        syncAll();
+        syncRoom(myRoomId);
     });
 
     socket.on('nextRound', () => {
+        if (!myRoomId || !rooms[myRoomId]) return;
+        const gameState = rooms[myRoomId];
+        
         gameState.actualItem = null;
         gameState.declaredItem = null;
         gameState.targetPlayerIndex = null;
         
-        // Quick redeal without erasing penalties
         let shuffledItems = [...gameState.items].sort(() => Math.random() - 0.5);
         gameState.players.forEach((p, index) => {
             p.hand = [{ item: shuffledItems[index], direction: gameState.itemDirections[shuffledItems[index]] }];
         });
         gameState.deck = [shuffledItems[gameState.players.length]];
         gameState.phase = 'DRAW';
-        syncAll();
+        syncRoom(myRoomId);
     });
 
     socket.on('fullReset', () => {
+        if (!myRoomId || !rooms[myRoomId]) return;
+        const gameState = rooms[myRoomId];
+        
         gameState.players.forEach(p => { p.penalties = 0; p.hand = []; });
         gameState.itemDirections = {};
         gameState.phase = 'LOBBY';
-        syncAll();
+        syncRoom(myRoomId);
     });
 
     socket.on('disconnect', () => {
-        console.log(`Player disconnected: ${socket.id}`);
-        // For production, you'd add logic here to handle a player dropping mid-game
+        console.log(`Player disconnected: ${socket.id} from room ${myRoomId}`);
+        // We do not delete them from the room here, so they can rejoin via URL + Name
     });
 });
 
