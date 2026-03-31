@@ -244,7 +244,7 @@ button.danger { background-color: var(--accent); color: white; }
 @media (max-width: 768px) {
     body {
         align-items: flex-start; 
-        padding-top: 55px; /* Pushes the entire header further down the screen */
+        padding-top: 70px; /* Pushes the entire header further down the screen */
     }
 
     header h1 {
