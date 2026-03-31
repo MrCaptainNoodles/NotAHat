@@ -38,7 +38,7 @@ window.onload = () => {
         UI.joinBtn.innerText = `Join Room ${roomFromUrl}`;
         UI.status.innerText = `Ready to join room ${roomFromUrl}`;
     } else {
-        UI.status.innerText = "Welcome to Memory Bluff!";
+        UI.status.innerText = "Welcome to Gaslight Express!";
     }
 };
 
