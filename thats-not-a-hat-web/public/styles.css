@@ -239,29 +239,34 @@ button.danger { background-color: var(--accent); color: white; }
 
 /* --- MOBILE RESPONSIVENESS --- */
 @media (max-width: 768px) {
+    body {
+        align-items: flex-start; /* Pushes the header text to the top of the screen */
+        padding-top: 20px;
+    }
+
     .play-area {
         flex-direction: column;
         min-height: auto;
-        padding-bottom: 20px;
+        margin-top: 20px; /* Breathing room under the header */
     }
 
     .game-table {
-        /* Shrinks the entire 550px circular table to fit on a phone screen */
-        transform: scale(0.65);
-        /* Collapses the invisible blank space left behind by scaling it down */
-        margin: -90px auto; 
+        /* Zooms the table out a bit more */
+        transform: scale(0.50);
+        /* Re-centers the table based on the new smaller scale */
+        margin: -130px auto; 
     }
 
     .controls {
-        position: relative;
-        right: auto;
-        top: auto;
-        transform: none;
+        /* Pins the buttons to the bottom center of the phone */
+        position: fixed;
+        bottom: 40px;
+        left: 50%;
+        transform: translateX(-50%);
         width: 90%;
         flex-direction: row;
         flex-wrap: wrap;
         justify-content: center;
-        margin: 0 auto;
         z-index: 20;
     }
 
