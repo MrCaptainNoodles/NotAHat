@@ -240,11 +240,16 @@ button.danger { background-color: var(--accent); color: white; }
     pointer-events: auto; /* Re-enable clicks for the deck */
 }
 
+
 /* --- MOBILE RESPONSIVENESS --- */
 @media (max-width: 768px) {
     body {
         align-items: flex-start; 
-        padding-top: 70px; /* Pushes the entire header further down the screen */
+        padding-top: 20px; /* Normal spacing for the lobby */
+    }
+
+    body.in-game {
+        padding-top: 65px; /* Pushes the header down ONLY while playing */
     }
 
     header h1 {

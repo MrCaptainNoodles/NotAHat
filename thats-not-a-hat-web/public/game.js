@@ -97,11 +97,13 @@ function render() {
     if (gameState.phase === 'LOBBY') {
         UI.lobbyArea.classList.remove('hidden');
         UI.playArea.classList.add('hidden');
+        document.body.classList.remove('in-game');
         renderLobby();
         return; 
     } else {
         UI.lobbyArea.classList.add('hidden');
         UI.playArea.classList.remove('hidden');
+        document.body.classList.add('in-game');
     }
 
     renderPlayers();
