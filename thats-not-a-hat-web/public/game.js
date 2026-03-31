@@ -210,8 +210,17 @@ function renderPlayers() {
     const radius = 220; 
     const centerOffset = 275; 
 
+    // Find the local player's index to anchor them to the bottom
+    let myIndex = gameState.players.findIndex(p => p.socketId === socket.id);
+    if (myIndex === -1) myIndex = 0; // Fallback if somehow not in the players list yet
+
     gameState.players.forEach((p, index) => {
-        const angle = (index / totalPlayers) * (2 * Math.PI) - (Math.PI / 2);
+        // Calculate position relative to the local player
+        const relativeIndex = (index - myIndex + totalPlayers) % totalPlayers;
+        
+        // Start at bottom (Math.PI / 2) and move counter-clockwise
+        const angle = (Math.PI / 2) - (relativeIndex / totalPlayers) * (2 * Math.PI);
+        
         const x = Math.cos(angle) * radius + centerOffset;
         const y = Math.sin(angle) * radius + centerOffset;
 
