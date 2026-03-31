@@ -115,7 +115,16 @@ function render() {
 
     switch(gameState.phase) {
         case 'ANNOUNCE':
-            UI.status.innerText = `Memorize everyone's starting cards! Game starts in ${gameState.countdown}...`;
+            const me = gameState.players.find(p => p.socketId === socket.id);
+            if (me && !me.isReady) {
+                UI.status.innerText = `Memorize everyone's starting cards!`;
+                const readyBtn = document.createElement('button');
+                readyBtn.innerText = "I'm Ready!";
+                readyBtn.onclick = () => socket.emit('playerReady');
+                UI.controls.appendChild(readyBtn);
+            } else {
+                UI.status.innerText = `Waiting for other players to ready up...`;
+            }
             break;
 
         case 'DRAW':
@@ -211,7 +220,7 @@ function renderPlayers() {
             const clickAttr = isClickable ? `onclick="openPassMenu()"` : '';
             const clickClass = isClickable ? 'clickable' : '';
 
-            if (gameState.phase === 'ANNOUNCE') {
+            if (gameState.phase === 'ANNOUNCE' || card.isFaceUp) {
                 handHTML += `<div class="card"><img src="${card.item}.png" alt="${card.item}"></div>`;
             } else {
                 handHTML += `<div class="card hidden ${clickClass}" ${clickAttr}><img src="${card.direction}.png" class="card-back-icon" alt="${card.direction}"></div>`;

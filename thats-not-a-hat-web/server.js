@@ -130,22 +130,23 @@ io.on('connection', (socket) => {
         });
 
         gameState.deck = [shuffledItems[gameState.players.length]];
+        gameState.players.forEach(p => p.isReady = false);
         gameState.phase = 'ANNOUNCE';
-        gameState.countdown = 3;
         syncRoom(myRoomId);
+    });
 
-        const timer = setInterval(() => {
-            if (!rooms[myRoomId]) { clearInterval(timer); return; }
-            rooms[myRoomId].countdown--;
-            
-            if (rooms[myRoomId].countdown > 0) {
-                syncRoom(myRoomId);
-            } else {
-                clearInterval(timer);
-                rooms[myRoomId].phase = 'DRAW';
-                syncRoom(myRoomId);
-            }
-        }, 1000);
+    socket.on('playerReady', () => {
+        if (!myRoomId || !rooms[myRoomId]) return;
+        const gameState = rooms[myRoomId];
+        if (gameState.phase !== 'ANNOUNCE') return;
+        
+        const player = gameState.players.find(p => p.socketId === socket.id);
+        if (player) player.isReady = true;
+        
+        if (gameState.players.every(p => p.isReady)) {
+            gameState.phase = 'DRAW';
+        }
+        syncRoom(myRoomId);
     });
 
     socket.on('drawCard', () => {
@@ -154,7 +155,7 @@ io.on('connection', (socket) => {
         if (gameState.phase !== 'DRAW') return;
         
         const currentPlayer = gameState.players[gameState.currentPlayerIndex];
-        const drawnCard = { item: gameState.deck[0], direction: gameState.itemDirections[gameState.deck[0]] };
+        const drawnCard = { item: gameState.deck[0], direction: gameState.itemDirections[gameState.deck[0]], isFaceUp: true };
         
         gameState.deck = [];
         currentPlayer.hand.push(drawnCard);
@@ -170,6 +171,7 @@ io.on('connection', (socket) => {
         
         const passingPlayer = gameState.players[gameState.currentPlayerIndex];
         gameState.transitCard = passingPlayer.hand.shift();
+        delete gameState.transitCard.isFaceUp;
         gameState.actualItem = gameState.transitCard.item;
         gameState.declaredItem = data.declaredItem;
         gameState.targetPlayerIndex = data.targetPlayerIndex;
@@ -223,9 +225,10 @@ io.on('connection', (socket) => {
         let shuffledItems = [...gameState.items].sort(() => Math.random() - 0.5);
         gameState.players.forEach((p, index) => {
             p.hand = [{ item: shuffledItems[index], direction: gameState.itemDirections[shuffledItems[index]] }];
+            p.isReady = false;
         });
         gameState.deck = [shuffledItems[gameState.players.length]];
-        gameState.phase = 'DRAW';
+        gameState.phase = 'ANNOUNCE';
         syncRoom(myRoomId);
     });
 
