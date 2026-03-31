@@ -236,3 +236,37 @@ button.danger { background-color: var(--accent); color: white; }
     align-items: center;
     z-index: 10; /* Forces the deck to sit ON TOP of everything else so it can't be blocked */
 }
+
+/* --- MOBILE RESPONSIVENESS --- */
+@media (max-width: 768px) {
+    .play-area {
+        flex-direction: column;
+        min-height: auto;
+        padding-bottom: 20px;
+    }
+
+    .game-table {
+        /* Shrinks the entire 550px circular table to fit on a phone screen */
+        transform: scale(0.65);
+        /* Collapses the invisible blank space left behind by scaling it down */
+        margin: -90px auto; 
+    }
+
+    .controls {
+        position: relative;
+        right: auto;
+        top: auto;
+        transform: none;
+        width: 90%;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin: 0 auto;
+        z-index: 20;
+    }
+
+    .modal-content {
+        width: 85%;
+        padding: 20px;
+    }
+}
