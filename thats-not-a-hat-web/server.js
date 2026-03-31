@@ -154,14 +154,27 @@ io.on('connection', (socket) => {
         const gameState = rooms[myRoomId];
         if (gameState.phase !== 'DRAW') return;
         
-        const currentPlayer = gameState.players[gameState.currentPlayerIndex];
-        const drawnCard = { item: gameState.deck[0], direction: gameState.itemDirections[gameState.deck[0]], isFaceUp: true };
+        const drawnCard = { item: gameState.deck[0], direction: gameState.itemDirections[gameState.deck[0]] };
         
         gameState.deck = [];
-        currentPlayer.hand.push(drawnCard);
-        gameState.passDirectionRule = currentPlayer.hand[0].direction;
-        gameState.phase = 'HOLDING';
+        gameState.drawnCardReveal = drawnCard;
+        gameState.phase = 'DRAW_REVEAL';
         syncRoom(myRoomId);
+
+        // Wait 3 seconds, then slide it into the player's hand face-down
+        setTimeout(() => {
+            if (!rooms[myRoomId] || rooms[myRoomId].phase !== 'DRAW_REVEAL') return;
+            
+            const room = rooms[myRoomId];
+            const currentPlayer = room.players[room.currentPlayerIndex];
+            
+            currentPlayer.hand.push(room.drawnCardReveal);
+            room.passDirectionRule = currentPlayer.hand[0].direction;
+            room.drawnCardReveal = null;
+            room.phase = 'HOLDING';
+            
+            syncRoom(myRoomId);
+        }, 3000);
     });
 
     socket.on('passCard', (data) => {

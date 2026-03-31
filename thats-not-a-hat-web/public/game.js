@@ -138,6 +138,14 @@ function render() {
             else UI.card.onclick = null;
             break;
 
+        case 'DRAW_REVEAL':
+            UI.status.innerText = `Revealing ${currentPlayer.name}'s drawn card to everyone...`;
+            UI.card.style.display = 'flex';
+            UI.card.className = 'card';
+            UI.card.innerHTML = `<img src="${gameState.drawnCardReveal.item}.png" alt="${gameState.drawnCardReveal.item}">`;
+            UI.card.onclick = null;
+            break;
+
         case 'HOLDING':
             UI.status.innerText = isMyTurn ? `Your turn! Click your OLD card to pass it.` : `Waiting for ${currentPlayer.name} to pass...`;
             UI.card.style.display = 'none'; 
@@ -250,7 +258,6 @@ function renderPlayers() {
     
     centerStage.innerHTML = `
         <div id="active-card" class="card hidden">${deckImageHTML}</div>
-        <div style="margin-top: 15px; font-weight: bold; color: #d2dae2; letter-spacing: 2px;">CENTER DECK</div>
     `;
     UI.gameTable.appendChild(centerStage);
     UI.card = document.getElementById('active-card');
