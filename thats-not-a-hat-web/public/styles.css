@@ -244,7 +244,15 @@ button.danger { background-color: var(--accent); color: white; }
 @media (max-width: 768px) {
     body {
         align-items: flex-start; 
-        padding-top: 40px; /* Brings header text down a bit */
+        padding-top: 55px; /* Pushes the entire header further down the screen */
+    }
+
+    header h1 {
+        margin-bottom: 5px; /* Pulls the title closer to the status message */
+    }
+
+    .status-message {
+        margin-top: 0; /* Removes extra gap above the text */
     }
 
     .play-area {
