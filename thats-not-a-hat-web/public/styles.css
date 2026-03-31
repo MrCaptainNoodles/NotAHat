@@ -254,13 +254,13 @@ button.danger { background-color: var(--accent); color: white; }
     }
 
     .game-table {
-        transform: scale(0.50) translateX(-10%); /* Shifts the entire circle to the left */
-        margin: -130px auto; 
+        transform: scale(0.50) translateX(-20%); /* Shifts the circle further to the left */
+        margin: -90px auto; /* Lowers the circle on the screen */
     }
 
     .controls {
         position: fixed;
-        bottom: 25px; /* Lowers the button on the screen */
+        bottom: 25px; 
         left: 50%;
         transform: translateX(-50%);
         width: 90%;
@@ -268,15 +268,17 @@ button.danger { background-color: var(--accent); color: white; }
         flex-direction: row;
         flex-wrap: wrap;
         justify-content: center;
-        align-items: center; /* Prevents the button from stretching vertically */
+        align-items: center; 
         gap: 15px;
-        z-index: 100; /* Forces buttons to float above everything */
+        z-index: 100; 
+        pointer-events: none; /* Lets your finger tap through the invisible container */
     }
 
     /* Stops the button from trying to stretch into empty space */
     .controls button {
         flex: none;
         height: auto;
+        pointer-events: auto; /* Makes sure the physical buttons can still be tapped */
     }
 
     .modal-content {
