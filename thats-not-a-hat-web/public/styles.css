@@ -1,0 +1,232 @@
+:root {
+    --bg-color: #1e272e;
+    --card-back: #485460;
+    --card-front: #d2dae2;
+    --accent: #ff3f34;
+    --text-main: #d2dae2;
+    --panel-bg: rgba(255, 255, 255, 0.1);
+}
+
+body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.game-container {
+    width: 100%;
+    max-width: 1000px; /* Widened to fit the table and the side panel */
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+/* Centers the table, but allows absolute positioning inside it */
+.play-area {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 550px;
+    width: 100%;
+}
+
+.play-area.hidden { display: none; }
+
+/* Pins the controls to the absolute right side of the screen */
+.controls {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 180px;
+}
+
+/* Lobby Styles */
+.lobby-area {
+    background: var(--panel-bg);
+    padding: 30px;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.lobby-area.hidden { display: none; }
+
+.lobby-player-list {
+    font-size: 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    text-align: left;
+    background: rgba(0,0,0,0.2);
+    padding: 15px;
+    border-radius: 8px;
+    min-height: 50px;
+}
+
+/* We removed the global .hidden so it stops deleting the cards! */
+#start-game-btn.hidden { display: none; }
+
+.status-message {
+    font-size: 1.2rem;
+    color: #0fbcf9;
+    min-height: 30px;
+    margin-bottom: 10px;
+}
+
+.card {
+    width: 160px;
+    height: 220px;
+    margin: 0 auto;
+    border-radius: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--card-front);
+    cursor: pointer;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+    transition: transform 0.2s;
+    overflow: hidden; 
+}
+
+.card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+.card.hidden {
+    background-color: var(--card-back);
+    color: transparent;
+    background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.2) 10px, rgba(0,0,0,0.2) 20px);
+    position: relative; /* Needed for the arrow */
+}
+
+/* Sizes the direction images (left.png, right.png, any.png) on the back of cards */
+.card-back-icon {
+    width: 60%;
+    height: 60%;
+    object-fit: contain;
+    pointer-events: none;
+    opacity: 0.9;
+}
+
+/* Modal Styles */
+.modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    background: #2d3436;
+    padding: 30px;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 300px;
+}
+
+input[type="text"], select {
+    padding: 10px;
+    font-size: 1rem;
+    border-radius: 5px;
+    border: 1px solid #636e72;
+    background: #dfe6e9;
+}
+
+button {
+    padding: 12px 20px;
+    font-size: 1rem;
+    cursor: pointer;
+    border: none;
+    border-radius: 5px;
+    background-color: #0fbcf9;
+    color: #1e272e;
+    font-weight: bold;
+}
+
+button:hover { background-color: #4bcffa; }
+button.secondary { background-color: #808e9b; color: white; }
+button.danger { background-color: var(--accent); color: white; }
+
+.game-table {
+    position: relative;
+    width: 550px;
+    height: 550px;
+    margin: 0 auto;
+    border-radius: 50%;
+    background: radial-gradient(circle, #2d3436 0%, var(--bg-color) 100%);
+    border: 5px solid #353b48;
+}
+
+.player-seat {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 120px;
+}
+
+.player-seat.active { color: #0fbcf9; font-weight: bold; }
+
+/* Make players' personal cards a bit smaller */
+.player-seat .card { width: 90px; height: 130px; }
+.player-seat .card.hidden::after { font-size: 2rem; }
+
+/* Container for when a player holds multiple cards */
+.player-hand {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+/* Give a glowing effect to the card they are supposed to click/pass */
+.card.clickable {
+    box-shadow: 0 0 15px #0fbcf9;
+    cursor: pointer;
+}
+.card.clickable:hover {
+    transform: translateY(-10px);
+}
+
+.center-stage {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 10; /* Forces the deck to sit ON TOP of everything else so it can't be blocked */
+}
