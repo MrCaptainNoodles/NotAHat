@@ -212,7 +212,7 @@ function renderPlayers() {
 
     // Find the local player's index to anchor them to the bottom
     let myIndex = gameState.players.findIndex(p => p.socketId === socket.id);
-    if (myIndex === -1) myIndex = 0; // Fallback if somehow not in the players list yet
+    if (myIndex === -1) myIndex = 0; // Fallback
 
     gameState.players.forEach((p, index) => {
         // Calculate position relative to the local player
@@ -265,6 +265,7 @@ function renderPlayers() {
         deckImageHTML = `<img src="${deckDir}.png" class="card-back-icon" alt="${deckDir}">`;
     }
     
+    // We removed the text label below the card so it perfectly centers
     centerStage.innerHTML = `
         <div id="active-card" class="card hidden">${deckImageHTML}</div>
     `;
