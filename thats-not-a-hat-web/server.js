@@ -16,7 +16,7 @@ function createGameState(hostSocketId) {
     return {
         hostId: hostSocketId, // The socket ID of the lobby creator
         players: [],
-        items: ['hat', 'mug', 'box', 'pizza', 'guitar', 'gas mask', 'ak47', 'turbine', 'power switch', 'ragdoll', 'scarecrow'],
+        items: ['hat', 'mug', 'box', 'pizza', 'guitar', 'gas mask', 'ak47', 'turbine', 'power switch', 'ragdoll', 'scarecrow', 'thimble', 'needle', 'bullet', 'noose', 'radio', 'gloves', 'knife', 'gem', 'pyramid', 'coin', 'floppy disk'],
         directions: ['left', 'right', 'any'],
         currentPlayerIndex: 0,
         targetPlayerIndex: null,
