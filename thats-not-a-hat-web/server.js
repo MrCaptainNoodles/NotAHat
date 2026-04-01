@@ -61,6 +61,7 @@ io.on('connection', (socket) => {
             socketId: socket.id,
             name: name,
             penalties: 0,
+            totalScore: 0,
             hand: []
         });
         
@@ -117,6 +118,9 @@ io.on('connection', (socket) => {
         if (socket.id !== gameState.hostId) return;
         if (gameState.players.length < 2 || gameState.players.length >= gameState.items.length) return;
 
+        gameState.maxRounds = gameState.players.length;
+        gameState.currentRound = 1;
+
         gameState.items.forEach(item => {
             if (!gameState.itemDirections[item]) {
                 gameState.itemDirections[item] = gameState.directions[Math.floor(Math.random() * gameState.directions.length)];
@@ -126,6 +130,8 @@ io.on('connection', (socket) => {
         let shuffledItems = [...gameState.items].sort(() => Math.random() - 0.5);
 
         gameState.players.forEach((p, index) => {
+            p.totalScore = 0;
+            p.penalties = 0;
             p.hand = [{ item: shuffledItems[index], direction: gameState.itemDirections[shuffledItems[index]] }];
         });
 
@@ -217,22 +223,55 @@ io.on('connection', (socket) => {
         
         let loser = isBluff ? passer : challenger;
         loser.penalties += 1;
-        gameState.currentPlayerIndex = loser.id;
+        gameState.currentPlayerIndex = loser.id; // Forces the loser to draw first next round
         
         if (loser.penalties >= gameState.maxPenalties) {
-            gameState.phase = 'GAME_OVER';
-            io.to(myRoomId).emit('challengeResult', { loserId: loser.socketId, isGameOver: true });
             
-            // Auto-return to lobby after 5 seconds so they can see the game over screen
-            setTimeout(() => {
-                if (rooms[myRoomId]) {
-                    const room = rooms[myRoomId];
-                    room.players.forEach(p => { p.penalties = 0; p.hand = []; });
-                    room.itemDirections = {};
-                    room.phase = 'LOBBY';
-                    syncRoom(myRoomId);
-                }
-            }, 5000);
+            // Golf rules: Add everyone's collected cards to their permanent score
+            gameState.players.forEach(p => p.totalScore += p.penalties);
+
+            // Check if that was the final round
+            if (gameState.currentRound >= gameState.maxRounds) {
+                gameState.phase = 'FINAL_GAME_OVER';
+                
+                // Calculate actual winners (Lowest Score)
+                let minScore = Math.min(...gameState.players.map(p => p.totalScore));
+                let winners = gameState.players.filter(p => p.totalScore === minScore);
+                
+                io.to(myRoomId).emit('finalGameOver', { winnerIds: winners.map(w => w.socketId) });
+                
+                setTimeout(() => {
+                    if (rooms[myRoomId]) {
+                        const room = rooms[myRoomId];
+                        room.players.forEach(p => { p.penalties = 0; p.totalScore = 0; p.hand = []; });
+                        room.itemDirections = {};
+                        room.phase = 'LOBBY';
+                        syncRoom(myRoomId);
+                    }
+                }, 8000); // 8 seconds to view the final scores
+
+            } else {
+                gameState.phase = 'ROUND_OVER';
+                io.to(myRoomId).emit('roundOver');
+                
+                // Automatically re-deal and start the next round
+                setTimeout(() => {
+                    if (rooms[myRoomId]) {
+                        const room = rooms[myRoomId];
+                        room.currentRound++;
+                        room.players.forEach(p => { p.penalties = 0; }); // Clear cards for new round
+                        
+                        let shuffledItems = [...room.items].sort(() => Math.random() - 0.5);
+                        room.players.forEach((p, index) => {
+                            p.hand = [{ item: shuffledItems[index], direction: room.itemDirections[shuffledItems[index]] }];
+                            p.isReady = false;
+                        });
+                        room.deck = [shuffledItems[room.players.length]];
+                        room.phase = 'ANNOUNCE';
+                        syncRoom(myRoomId);
+                    }
+                }, 5000);
+            }
 
         } else {
             gameState.phase = 'REVEAL';

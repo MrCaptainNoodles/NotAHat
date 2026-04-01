@@ -13,6 +13,7 @@ const sfx = {
     move: new Audio('move.mp3'),
     flip: new Audio('flip.mp3'),
     win: new Audio('win.mp3'),
+    champion: new Audio('champion.mp3'), // <-- ADDED THIS LINE
     lose: new Audio('lose.mp3'),
     gameover: new Audio('gameover.mp3')
 };
@@ -49,7 +50,11 @@ const UI = {
     chatMessages: document.getElementById('chat-messages'),
     chatInput: document.getElementById('chat-input'),
     chatSendBtn: document.getElementById('chat-send-btn'),
-    gameOverOverlay: document.getElementById('game-over-overlay')
+    gameOverOverlay: document.getElementById('game-over-overlay'),
+    hudArea: document.getElementById('game-info-hud'),
+    roundDisplay: document.getElementById('round-display'),
+    leaderboardArea: document.getElementById('desktop-leaderboard'),
+    leaderboardList: document.getElementById('leaderboard-list')
 };
 
 // Check if a friend sent us a link with a room code!
@@ -84,12 +89,21 @@ socket.on('stateUpdate', (newState) => {
     render();
 });
 
-// Listen for challenge results to play the penalty sound for the whole lobby
 socket.on('challengeResult', (data) => {
-    if (data.isGameOver) return; // We handle the gameover sound in stateUpdate
-    
-    // Everyone in the room hears the lose sound when someone gets a penalty!
-    playSfx('lose');
+    playSfx('lose'); // Everyone hears the sad sound when someone gets a card
+});
+
+socket.on('roundOver', () => {
+    playSfx('lose'); // End of a round is still a penalty moment
+});
+
+socket.on('finalGameOver', (data) => {
+    // Check if the current player is in the list of winners (lowest score)
+    if (data.winnerIds.includes(socket.id)) {
+        playSfx('champion'); // <-- CHANGED 'win' to 'champion'
+    } else {
+        playSfx('gameover');
+    }
 });
 
 socket.on('roomCreated', (roomId) => {
@@ -142,14 +156,28 @@ function render() {
         UI.lobbyArea.classList.remove('hidden');
         UI.playArea.classList.add('hidden');
         document.body.classList.remove('in-game');
-        UI.gameOverOverlay.classList.add('hidden'); // Hides the big text when a new game starts
+        UI.gameOverOverlay.classList.add('hidden'); 
+        UI.hudArea.classList.add('hidden');
+        UI.leaderboardArea.classList.add('hidden');
         renderLobby();
         return; 
     } else {
         UI.lobbyArea.classList.add('hidden');
         UI.playArea.classList.remove('hidden');
         document.body.classList.add('in-game');
+        UI.hudArea.classList.remove('hidden');
+        UI.leaderboardArea.classList.remove('hidden');
     }
+
+    // Update Round Counter & Leaderboard
+    UI.roundDisplay.innerText = `Round ${gameState.currentRound} / ${gameState.maxRounds}`;
+    UI.leaderboardList.innerHTML = '';
+    gameState.players.forEach(p => {
+        const entry = document.createElement('div');
+        entry.className = 'leaderboard-entry';
+        entry.innerHTML = `<strong>${p.name}</strong><br>Cards: ${p.penalties} | <span class="score">Score: ${p.totalScore}</span>`;
+        UI.leaderboardList.appendChild(entry);
+    });
 
     renderPlayers();
     UI.controls.innerHTML = ''; 
@@ -232,21 +260,33 @@ function render() {
             }
             break;
 
-        case 'GAME_OVER':
+        case 'ROUND_OVER':
             UI.card.className = 'card';
-            UI.card.innerHTML = `<div style="font-size: 4rem;">💀</div>`; 
+            UI.card.innerHTML = `<div style="font-size: 4rem;"></div>`; 
             
-            const losingPlayer = gameState.players.find(p => p.penalties >= gameState.maxPenalties);
-            UI.status.innerText = `GAME OVER! ${losingPlayer.name} has reached ${gameState.maxPenalties} penalties! Returning to lobby...`;
+            const roundLoser = gameState.players.find(p => p.penalties >= gameState.maxPenalties);
+            UI.status.innerText = `ROUND OVER! ${roundLoser.name} collected 3 cards! Tallying scores...`;
             
-            // Plaster their name across the screen
-            UI.gameOverOverlay.innerText = `${losingPlayer.name} LOST!`;
+            UI.gameOverOverlay.innerText = `${roundLoser.name} ENDS THE ROUND!`;
             UI.gameOverOverlay.classList.remove('hidden');
             
-            // Hide the text half a second (4500ms) before the server kicks everyone to the lobby
-            setTimeout(() => {
-                UI.gameOverOverlay.classList.add('hidden');
-            }, 4500);
+            setTimeout(() => { UI.gameOverOverlay.classList.add('hidden'); }, 4500);
+            break;
+
+        case 'FINAL_GAME_OVER':
+            UI.card.className = 'card';
+            UI.card.innerHTML = `<div style="font-size: 4rem;"></div>`; 
+            
+            let minScore = Math.min(...gameState.players.map(p => p.totalScore));
+            let winners = gameState.players.filter(p => p.totalScore === minScore);
+            let winnerNames = winners.map(w => w.name).join(' & ');
+
+            UI.status.innerText = `GAME OVER! Lowest score wins! Returning to lobby...`;
+            
+            UI.gameOverOverlay.innerText = `${winnerNames} WINS!`;
+            UI.gameOverOverlay.classList.remove('hidden');
+            
+            setTimeout(() => { UI.gameOverOverlay.classList.add('hidden'); }, 7500);
             break;
     }
 }
@@ -298,7 +338,7 @@ function renderPlayers() {
         seat.innerHTML = `
             <div class="player-nameplate">
                 <div class="name">${hostIcon}${p.name}</div>
-                <div class="penalties">${p.penalties} / ${gameState.maxPenalties} Penalties</div>
+                <div class="penalties">Cards: ${p.penalties} | Score: ${p.totalScore}</div>
             </div>
             ${handHTML}
         `;

@@ -339,6 +339,39 @@ button.danger { background-color: var(--accent); color: white; }
     width: 100%;
 }
 
+/* --- GAME HUD & LEADERBOARD --- */
+#game-info-hud {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 1.5rem;
+    color: #0fbcf9;
+    font-weight: bold;
+    z-index: 20;
+}
+
+#desktop-leaderboard {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(30, 39, 46, 0.9);
+    border: 2px solid #353b48;
+    border-radius: 8px;
+    padding: 15px;
+    min-width: 150px;
+    z-index: 20;
+    text-align: left;
+}
+
+#desktop-leaderboard h3 { margin: 0 0 10px 0; color: #0fbcf9; text-align: center; font-size: 1.2rem; }
+.leaderboard-entry { margin-bottom: 8px; font-size: 0.9rem; border-bottom: 1px solid #353b48; padding-bottom: 5px; }
+.leaderboard-entry:last-child { border-bottom: none; }
+.leaderboard-entry .score { color: #ff4757; font-weight: bold; }
+
+/* Hides the penalty text on Desktop so it's JUST the name */
+.player-nameplate .penalties { display: none; }
+
 /* --- MOBILE RESPONSIVENESS --- */
 @media (max-width: 768px) {
     body {
@@ -401,6 +434,14 @@ button.danger { background-color: var(--accent); color: white; }
     #chat-container {
         display: none !important;
     }
+
+    /* Hides the desktop scoreboard on mobile */
+    #desktop-leaderboard { display: none !important; }
+    
+    #game-info-hud { top: 10px; font-size: 1.2rem; }
+    
+    /* Brings the penalties back into the nameplate for Mobile users */
+    .player-nameplate .penalties { display: block; }
 
     #game-over-overlay {
         font-size: 2.5rem; /* Shrinks the giant text so it fits on a phone */
