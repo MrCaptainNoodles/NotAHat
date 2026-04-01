@@ -275,18 +275,8 @@ io.on('connection', (socket) => {
         const player = room.players.find(p => p.socketId === socket.id);
         if (!player) return;
 
-        // Generate 12-hour timestamp formatting
-        const now = new Date();
-        let hours = now.getHours();
-        let minutes = now.getMinutes();
-        const ampm = hours >= 12 ? 'PM' : 'AM';
-        hours = hours % 12;
-        hours = hours ? hours : 12; 
-        minutes = minutes < 10 ? '0' + minutes : minutes;
-        const timeString = hours + ':' + minutes + ' ' + ampm;
-
+        // Broadcasts just the name and message, letting the client handle the time
         io.to(myRoomId).emit('chatMessage', {
-            time: timeString,
             name: player.name,
             message: msg
         });

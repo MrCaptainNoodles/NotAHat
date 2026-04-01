@@ -397,10 +397,20 @@ UI.submitPassBtn.onclick = () => {
 
 // --- CHAT LOGIC ---
 socket.on('chatMessage', (data) => {
+    // Generate local 12-hour timestamp directly on the player's device
+    const now = new Date();
+    let hours = now.getHours();
+    let minutes = now.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; 
+    minutes = minutes < 10 ? '0' + minutes : minutes;
+    const timeString = hours + ':' + minutes + ' ' + ampm;
+
     const msgDiv = document.createElement('div');
-    msgDiv.innerHTML = `<span class="chat-msg-time">${data.time}</span> <span class="chat-msg-name">${data.name}:</span> <span class="chat-msg-text">${data.message}</span>`;
+    msgDiv.innerHTML = `<span class="chat-msg-time">${timeString}</span> <span class="chat-msg-name">${data.name}:</span> <span class="chat-msg-text">${data.message}</span>`;
     UI.chatMessages.appendChild(msgDiv);
-    UI.chatMessages.scrollTop = UI.chatMessages.scrollHeight; // Auto-scrolls to newest message
+    UI.chatMessages.scrollTop = UI.chatMessages.scrollHeight; 
 });
 
 function sendChatMessage() {
