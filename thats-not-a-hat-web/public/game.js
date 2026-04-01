@@ -242,6 +242,11 @@ function render() {
             // Plaster their name across the screen
             UI.gameOverOverlay.innerText = `${losingPlayer.name} LOST!`;
             UI.gameOverOverlay.classList.remove('hidden');
+            
+            // Hide the text half a second (4500ms) before the server kicks everyone to the lobby
+            setTimeout(() => {
+                UI.gameOverOverlay.classList.add('hidden');
+            }, 4500);
             break;
     }
 }
