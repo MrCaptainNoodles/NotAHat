@@ -498,13 +498,8 @@ socket.on('receiveEmote', (data) => {
     // We get the rendered seats by relying on their order in the DOM
     const seats = document.querySelectorAll('.player-seat');
     
-    // Calculate the DOM index based on the relative ring offset logic in renderPlayers
-    let myIndex = gameState.players.findIndex(p => p.socketId === socket.id);
-    if (myIndex === -1) myIndex = 0;
-    const totalPlayers = gameState.players.length;
-    const relativeIndex = (playerIndex - myIndex + totalPlayers) % totalPlayers;
-    
-    const targetSeat = seats[relativeIndex];
+    // The seats are appended to the DOM in the exact order of the players array!
+    const targetSeat = seats[playerIndex];
     
     if (targetSeat) {
         const floatDiv = document.createElement('div');
