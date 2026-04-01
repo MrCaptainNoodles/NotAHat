@@ -49,13 +49,15 @@ header h1 {
 /* Pins the controls to the absolute right side of the screen */
 .controls {
     position: absolute;
-    right: -80px; /* Pushed further to the right, away from the game table */
+    right: 10px; /* Pulled safely back into the screen so buttons aren't cut off */
     top: 50%;
     transform: translateY(-50%);
     display: flex;
     flex-direction: column;
     gap: 15px;
     width: 180px;
+    z-index: 200; /* Forces buttons to the very top layer so they are clickable */
+    pointer-events: auto;
 }
 
 /* Lobby Styles */

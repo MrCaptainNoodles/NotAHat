@@ -19,6 +19,9 @@ const sfx = {
     tick: new Audio('tick.mp3') // <-- ADDED THE TICKING CLOCK
 };
 
+// Forces the ticking clock to loop continuously while players decide
+sfx.tick.loop = true;
+
 function playSfx(soundName) {
     // Resets the sound to the beginning if it's already playing, then plays it
     if (sfx[soundName]) {
@@ -333,6 +336,7 @@ function renderPlayers() {
         const y = Math.sin(angle) * radius + centerOffset;
 
         const seat = document.createElement('div');
+        seat.id = `seat-${p.socketId}`; // Gives the seat a bulletproof, unique ID for emotes
         const isActive = index === (gameState.phase === 'RESPOND' ? gameState.targetPlayerIndex : gameState.currentPlayerIndex);
         seat.className = `player-seat ${isActive ? 'active' : ''}`;
         seat.style.left = `${x}px`;
@@ -499,16 +503,10 @@ function sendEmote(emoteChar) {
 }
 
 socket.on('receiveEmote', (data) => {
-    // Find the seat of the player who sent the emote
     if (!gameState) return;
-    const playerIndex = gameState.players.findIndex(p => p.socketId === data.socketId);
-    if (playerIndex === -1) return;
     
-    // We get the rendered seats by relying on their order in the DOM
-    const seats = document.querySelectorAll('.player-seat');
-    
-    // The seats are appended to the DOM in the exact order of the players array!
-    const targetSeat = seats[playerIndex];
+    // Directly targets the exact seat using the unique ID
+    const targetSeat = document.getElementById(`seat-${data.socketId}`);
     
     if (targetSeat) {
         const floatDiv = document.createElement('div');
