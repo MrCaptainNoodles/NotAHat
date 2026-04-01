@@ -49,7 +49,7 @@ header h1 {
 /* Pins the controls to the absolute right side of the screen */
 .controls {
     position: absolute;
-    right: 10px; /* Pulled safely back into the screen so buttons aren't cut off */
+    right:-80px; /* Pulled safely back into the screen so buttons aren't cut off */
     top: 50%;
     transform: translateY(-50%);
     display: flex;

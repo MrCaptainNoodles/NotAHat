@@ -60,6 +60,7 @@ const UI = {
     gameOverOverlay: document.getElementById('game-over-overlay'),
     hudArea: document.getElementById('game-info-hud'),
     roundDisplay: document.getElementById('round-display'),
+    superlativesDisplay: document.getElementById('superlatives-display'),
     leaderboardArea: document.getElementById('desktop-leaderboard'),
     leaderboardList: document.getElementById('leaderboard-list')
 };
@@ -298,18 +299,24 @@ function render() {
 
             UI.status.innerText = `GAME OVER! Lowest score wins! Returning to lobby...`;
             
-            let superlativesHTML = '<div style="font-size: 1.5rem; margin-top: 20px; color: #d2dae2; text-shadow: none; text-transform: none;">';
+            let superlativesHTML = '';
             if (gameState.superlatives) {
                 for (const [title, name] of Object.entries(gameState.superlatives)) {
-                    if (name) superlativesHTML += `<div><strong>${title}:</strong> ${name}</div>`;
+                    if (name) superlativesHTML += `<div style="margin-bottom: 5px;"><strong>${title}:</strong> <span style="color: #0fbcf9;">${name}</span></div>`;
                 }
             }
-            superlativesHTML += '</div>';
+            
+            // Injects the list into the top-left HUD
+            UI.superlativesDisplay.innerHTML = superlativesHTML;
 
-            UI.gameOverOverlay.innerHTML = `${winnerNames} WINS!${superlativesHTML}`;
+            // Keeps the giant overlay strictly to the winner's name
+            UI.gameOverOverlay.innerText = `${winnerNames} WINS!`; 
             UI.gameOverOverlay.classList.remove('hidden');
             
-            setTimeout(() => { UI.gameOverOverlay.classList.add('hidden'); }, 12500);
+            setTimeout(() => { 
+                UI.gameOverOverlay.classList.add('hidden'); 
+                UI.superlativesDisplay.innerHTML = ''; // Clears the list when heading back to the lobby
+            }, 12500);
             break;
     }
 }
