@@ -240,6 +240,38 @@ button.danger { background-color: var(--accent); color: white; }
     pointer-events: auto; /* Re-enable clicks for the deck */
 }
 
+/* --- PLAYER NAMEPLATES --- */
+.player-nameplate {
+    background-color: rgba(30, 39, 46, 0.9);
+    border: 2px solid #353b48;
+    border-radius: 8px;
+    padding: 6px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0px; /* Pulls the name and penalty count right up against each other */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
+    margin-bottom: 8px; /* Keeps the nameplate from physically touching the cards */
+    z-index: 10;
+}
+
+.player-nameplate .name {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: var(--text-main);
+}
+
+.player-seat.active .player-nameplate .name {
+    color: #0fbcf9; /* Highlights the name in blue when it is their turn */
+}
+
+.player-nameplate .penalties {
+    font-size: 0.8rem;
+    color: #ff4757; /* Bold red so the danger level is obvious */
+    text-transform: uppercase;
+    font-weight: bold;
+    margin-top: 2px;
+}
 
 /* --- CHAT SYSTEM --- */
 #chat-container {

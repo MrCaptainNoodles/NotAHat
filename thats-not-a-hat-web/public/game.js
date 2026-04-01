@@ -84,15 +84,12 @@ socket.on('stateUpdate', (newState) => {
     render();
 });
 
-// Listen for challenge results to play win/lose sounds
+// Listen for challenge results to play the penalty sound for the whole lobby
 socket.on('challengeResult', (data) => {
     if (data.isGameOver) return; // We handle the gameover sound in stateUpdate
     
-    if (data.loserId === socket.id) {
-        playSfx('lose');
-    } else {
-        playSfx('win');
-    }
+    // Everyone in the room hears the lose sound when someone gets a penalty!
+    playSfx('lose');
 });
 
 socket.on('roomCreated', (roomId) => {
@@ -294,8 +291,10 @@ function renderPlayers() {
         // Add a host crown icon next to the host's name
         const hostIcon = (gameState.hostId === p.socketId) ? '👑 ' : '';
         seat.innerHTML = `
-            <div>${hostIcon}${p.name}</div>
-            <div style="font-size: 0.8rem">Penalties: ${p.penalties}</div>
+            <div class="player-nameplate">
+                <div class="name">${hostIcon}${p.name}</div>
+                <div class="penalties">${p.penalties} / ${gameState.maxPenalties} Penalties</div>
+            </div>
             ${handHTML}
         `;
         UI.gameTable.appendChild(seat);
