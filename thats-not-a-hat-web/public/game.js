@@ -40,8 +40,11 @@ const UI = {
     roomInfo: document.getElementById('room-info'),
     roomCodeDisplay: document.getElementById('room-code-display'),
     lobbyPlayerList: document.getElementById('lobby-player-list'),
-    startGameBtn: document.getElementById('start-game-btn'),
-    modal: document.getElementById('pass-modal'),
+        startGameBtn: document.getElementById('start-game-btn'),
+        rulesBtn: document.getElementById('rules-btn'),
+        rulesModal: document.getElementById('rules-modal'),
+        closeRulesBtn: document.getElementById('close-rules-btn'),
+        modal: document.getElementById('pass-modal'),
     declareInput: document.getElementById('declare-input'), 
     targetSelect: document.getElementById('target-select'),
     submitPassBtn: document.getElementById('submit-pass-btn'),
@@ -267,10 +270,10 @@ function render() {
             const roundLoser = gameState.players.find(p => p.penalties >= gameState.maxPenalties);
             UI.status.innerText = `ROUND OVER! ${roundLoser.name} collected 3 cards! Tallying scores...`;
             
-            UI.gameOverOverlay.innerText = `${roundLoser.name} ENDS THE ROUND!`;
+            UI.gameOverOverlay.innerText = `${roundLoser.name} loses the round!`;
             UI.gameOverOverlay.classList.remove('hidden');
             
-            setTimeout(() => { UI.gameOverOverlay.classList.add('hidden'); }, 4500);
+            setTimeout(() => { UI.gameOverOverlay.classList.add('hidden'); }, 3500);
             break;
 
         case 'FINAL_GAME_OVER':
@@ -390,6 +393,14 @@ UI.joinBtn.onclick = () => {
 
 UI.startGameBtn.onclick = () => {
     socket.emit('startGame');
+};
+
+UI.rulesBtn.onclick = () => {
+    UI.rulesModal.classList.remove('hidden');
+};
+
+UI.closeRulesBtn.onclick = () => {
+    UI.rulesModal.classList.add('hidden');
 };
 
 function openPassMenu() {

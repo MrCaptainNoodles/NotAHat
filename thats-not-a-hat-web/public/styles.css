@@ -337,6 +337,12 @@ button.danger { background-color: var(--accent); color: white; }
     text-align: center;
     pointer-events: none; /* Lets clicks pass through if needed */
     width: 100%;
+    opacity: 1;
+    transition: opacity 1s ease-in-out; /* Adds the fade effect */
+}
+
+#game-over-overlay.hidden {
+    opacity: 0; /* Actually hides the text so it disappears */
 }
 
 /* --- GAME HUD & LEADERBOARD --- */

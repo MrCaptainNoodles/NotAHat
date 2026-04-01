@@ -15,6 +15,7 @@
 
         <div id="lobby-area" class="lobby-area">
             <h2>Lobby</h2>
+            <button id="rules-btn" class="secondary" style="margin-bottom: 15px;">How to Play</button>
             
             <div id="setup-controls">
                 <input type="text" id="player-name-input" placeholder="Enter Player Name" autocomplete="off">
@@ -48,6 +49,22 @@
 
             <div id="action-controls" class="controls"></div>
         </main>
+    </div>
+
+    <div id="rules-modal" class="modal hidden">
+        <div class="modal-content" style="width: 85%; max-width: 450px; text-align: left;">
+            <h3 style="text-align: center;">How to Play</h3>
+            <ul style="font-size: 0.9rem; padding-left: 20px; line-height: 1.4;">
+                <li><strong>Goal:</strong> Finish the game with the lowest score (fewest penalty cards).</li>
+                <li><strong>Memorize:</strong> At the start, memorize everyone's face-up cards.</li>
+                <li><strong>Draw & Pass:</strong> On your turn, draw a card. Pass your <em>old</em> card face-down in the direction shown on the back of the new card.</li>
+                <li><strong>Declare:</strong> Tell the receiver what item you are passing them. You can tell the truth or bluff!</li>
+                <li><strong>Respond:</strong> The receiver can <strong>Accept</strong> it (they now hold it) or <strong>Challenge</strong> you.</li>
+                <li><strong>Challenge:</strong> If they challenge, the card is revealed. If you lied, you get a penalty. If you told the truth, they get a penalty!</li>
+                <li><strong>Round End:</strong> Once someone gets 3 penalties, the round ends and those cards are added to everyone's total score.</li>
+            </ul>
+            <button id="close-rules-btn" style="width: 100%; margin-top: 10px;">Got it!</button>
+        </div>
     </div>
 
     <div id="pass-modal" class="modal hidden">
