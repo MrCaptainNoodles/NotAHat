@@ -62,7 +62,9 @@ io.on('connection', (socket) => {
             name: name,
             penalties: 0,
             totalScore: 0,
-            hand: []
+            winStreak: 0,
+            hand: [],
+            stats: { successfulBluffs: 0, incorrectChallenges: 0, bluffsAccepted: 0, truthsPassed: 0, challengesInitiated: 0, timesTargeted: 0, totalThinkTime: 0, decisionsMade: 0 }
         });
         
         socket.emit('roomCreated', roomId);
@@ -101,7 +103,9 @@ io.on('connection', (socket) => {
                 socketId: socket.id,
                 name: name,
                 penalties: 0,
-                hand: []
+                winStreak: 0,
+                hand: [],
+                stats: { successfulBluffs: 0, incorrectChallenges: 0, bluffsAccepted: 0, truthsPassed: 0, challengesInitiated: 0, timesTargeted: 0, totalThinkTime: 0, decisionsMade: 0 }
             });
         }
         
@@ -194,6 +198,12 @@ io.on('connection', (socket) => {
         gameState.actualItem = gameState.transitCard.item;
         gameState.declaredItem = data.declaredItem;
         gameState.targetPlayerIndex = data.targetPlayerIndex;
+        
+        // Track stats
+        gameState.players[gameState.targetPlayerIndex].stats.timesTargeted++;
+        if (gameState.actualItem === gameState.declaredItem) passingPlayer.stats.truthsPassed++;
+        gameState.phaseStartTime = Date.now(); // Start the overthinker clock!
+        
         gameState.phase = 'RESPOND';
         syncRoom(myRoomId);
     });
@@ -204,6 +214,17 @@ io.on('connection', (socket) => {
         if (gameState.phase !== 'RESPOND') return;
         
         const targetPlayer = gameState.players[gameState.targetPlayerIndex];
+        
+        // Track stats
+        const passingPlayer = gameState.players[gameState.currentPlayerIndex];
+        const thinkTime = Date.now() - (gameState.phaseStartTime || Date.now());
+        targetPlayer.stats.totalThinkTime += thinkTime;
+        targetPlayer.stats.decisionsMade++;
+        if (gameState.actualItem !== gameState.declaredItem) {
+            targetPlayer.stats.bluffsAccepted++;
+            passingPlayer.stats.successfulBluffs++;
+        }
+
         targetPlayer.hand.push(gameState.transitCard);
         gameState.transitCard = null;
         gameState.currentPlayerIndex = gameState.targetPlayerIndex;
@@ -221,6 +242,13 @@ io.on('connection', (socket) => {
         const challenger = gameState.players[gameState.targetPlayerIndex];
         const passer = gameState.players[gameState.currentPlayerIndex];
         
+        // Track stats
+        const thinkTime = Date.now() - (gameState.phaseStartTime || Date.now());
+        challenger.stats.totalThinkTime += thinkTime;
+        challenger.stats.decisionsMade++;
+        challenger.stats.challengesInitiated++;
+        if (!isBluff) challenger.stats.incorrectChallenges++;
+
         let loser = isBluff ? passer : challenger;
         loser.penalties += 1;
         gameState.currentPlayerIndex = loser.id; // Forces the loser to draw first next round
@@ -238,17 +266,48 @@ io.on('connection', (socket) => {
                 let minScore = Math.min(...gameState.players.map(p => p.totalScore));
                 let winners = gameState.players.filter(p => p.totalScore === minScore);
                 
+                // Update win streaks
+                gameState.players.forEach(p => {
+                    if (p.totalScore === minScore) p.winStreak += 1;
+                    else p.winStreak = 0;
+                });
+
+                // Calculate Superlatives
+                const getTop = (statFn) => {
+                    let topPlayer = null;
+                    let maxVal = -1;
+                    gameState.players.forEach(p => {
+                        const val = statFn(p);
+                        if (val > maxVal && val > 0) { maxVal = val; topPlayer = p.name; }
+                    });
+                    return topPlayer;
+                };
+
+                gameState.superlatives = {
+                    "The Mastermind": getTop(p => p.stats.successfulBluffs),
+                    "The Paranoid": getTop(p => p.stats.incorrectChallenges),
+                    "The Gullible": getTop(p => p.stats.bluffsAccepted),
+                    "The Honest Abe": getTop(p => p.stats.truthsPassed),
+                    "The Instigator": getTop(p => p.stats.challengesInitiated),
+                    "The Target": getTop(p => p.stats.timesTargeted),
+                    "The Overthinker": getTop(p => p.stats.decisionsMade > 0 ? (p.stats.totalThinkTime / p.stats.decisionsMade) : 0)
+                };
+
                 io.to(myRoomId).emit('finalGameOver', { winnerIds: winners.map(w => w.socketId) });
                 
                 setTimeout(() => {
                     if (rooms[myRoomId]) {
                         const room = rooms[myRoomId];
-                        room.players.forEach(p => { p.penalties = 0; p.totalScore = 0; p.hand = []; });
+                        room.players.forEach(p => { 
+                            p.penalties = 0; p.totalScore = 0; p.hand = []; 
+                            p.stats = { successfulBluffs: 0, incorrectChallenges: 0, bluffsAccepted: 0, truthsPassed: 0, challengesInitiated: 0, timesTargeted: 0, totalThinkTime: 0, decisionsMade: 0 }; 
+                        });
                         room.itemDirections = {};
+                        room.superlatives = null;
                         room.phase = 'LOBBY';
                         syncRoom(myRoomId);
                     }
-                }, 8000); // 8 seconds to view the final scores
+                }, 13000); // Increased to 13 seconds so players can read the stats!
 
             } else {
                 gameState.phase = 'ROUND_OVER';
@@ -306,6 +365,11 @@ io.on('connection', (socket) => {
         gameState.itemDirections = {};
         gameState.phase = 'LOBBY';
         syncRoom(myRoomId);
+    });
+
+    socket.on('sendEmote', (emote) => {
+        if (!myRoomId || !rooms[myRoomId]) return;
+        io.to(myRoomId).emit('receiveEmote', { socketId: socket.id, emote: emote });
     });
 
     socket.on('chatMessage', (msg) => {

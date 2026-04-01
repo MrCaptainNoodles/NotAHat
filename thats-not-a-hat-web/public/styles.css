@@ -24,7 +24,8 @@ body {
     text-align: center;
     display: flex;
     flex-direction: column;
-    gap: 30px;
+    gap: 10px; /* Shrinks the gap to pull things up */
+    margin-top: -30px; /* Pulls the entire game area closer to the top */
 }
 
 /* Centers the table, but allows absolute positioning inside it */
@@ -33,7 +34,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 550px;
+    min-height: 650px; /* Increased to fit the bigger table */
     width: 100%;
 }
 
@@ -180,8 +181,8 @@ button.danger { background-color: var(--accent); color: white; }
 
 .game-table {
     position: relative;
-    width: 550px;
-    height: 550px;
+    width: 650px; /* Expanded by 100px */
+    height: 650px; /* Expanded by 100px */
     margin: 0 auto;
     border-radius: 50%;
     background: radial-gradient(circle, #2d3436 0%, var(--bg-color) 100%);
@@ -377,6 +378,24 @@ button.danger { background-color: var(--accent); color: white; }
 
 /* Hides the penalty text on Desktop so it's JUST the name */
 .player-nameplate .penalties { display: none; }
+
+/* Emote Animation */
+.floating-emote {
+    position: absolute;
+    top: 40px; /* Aligns vertically with the player's hand */
+    right: -40px; /* Pushes it out to the right of the seat */
+    font-size: 2.5rem;
+    pointer-events: none;
+    z-index: 100;
+    animation: floatSideAndFade 2s ease-out forwards;
+}
+
+@keyframes floatSideAndFade {
+    0% { opacity: 0; transform: translate(0, 0) scale(0.5); }
+    15% { opacity: 1; transform: translate(10px, -10px) scale(1.2); }
+    80% { opacity: 1; transform: translate(10px, -20px) scale(1); }
+    100% { opacity: 0; transform: translate(10px, -30px) scale(1); }
+}
 
 /* --- MOBILE RESPONSIVENESS --- */
 @media (max-width: 768px) {

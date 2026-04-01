@@ -178,7 +178,8 @@ function render() {
     gameState.players.forEach(p => {
         const entry = document.createElement('div');
         entry.className = 'leaderboard-entry';
-        entry.innerHTML = `<strong>${p.name}</strong><br>Cards: ${p.penalties} | <span class="score">Score: ${p.totalScore}</span>`;
+        const streakText = p.winStreak > 0 ? ` <span style="color: #ff9f43; font-weight: bold;">🔥x${p.winStreak}</span>` : '';
+        entry.innerHTML = `<strong>${p.name}${streakText}</strong><br>Cards: ${p.penalties} | <span class="score">Score: ${p.totalScore}</span>`;
         UI.leaderboardList.appendChild(entry);
     });
 
@@ -286,10 +287,18 @@ function render() {
 
             UI.status.innerText = `GAME OVER! Lowest score wins! Returning to lobby...`;
             
-            UI.gameOverOverlay.innerText = `${winnerNames} WINS!`;
+            let superlativesHTML = '<div style="font-size: 1.5rem; margin-top: 20px; color: #d2dae2; text-shadow: none; text-transform: none;">';
+            if (gameState.superlatives) {
+                for (const [title, name] of Object.entries(gameState.superlatives)) {
+                    if (name) superlativesHTML += `<div><strong>${title}:</strong> ${name}</div>`;
+                }
+            }
+            superlativesHTML += '</div>';
+
+            UI.gameOverOverlay.innerHTML = `${winnerNames} WINS!${superlativesHTML}`;
             UI.gameOverOverlay.classList.remove('hidden');
             
-            setTimeout(() => { UI.gameOverOverlay.classList.add('hidden'); }, 7500);
+            setTimeout(() => { UI.gameOverOverlay.classList.add('hidden'); }, 12500);
             break;
     }
 }
@@ -298,8 +307,8 @@ function renderPlayers() {
     UI.gameTable.innerHTML = ''; 
     
     const totalPlayers = gameState.players.length;
-    const radius = 220; 
-    const centerOffset = 275; 
+    const radius = 270; /* Increased to push players further out */
+    const centerOffset = 325; /* Adjusted to match the new 650px CSS table center */
 
     // Find the local player's index to anchor them to the bottom
     let myIndex = gameState.players.findIndex(p => p.socketId === socket.id);
@@ -466,6 +475,38 @@ socket.on('chatMessage', (data) => {
     msgDiv.innerHTML = `<span class="chat-msg-time">${timeString}</span> <span class="chat-msg-name">${data.name}:</span> <span class="chat-msg-text">${data.message}</span>`;
     UI.chatMessages.appendChild(msgDiv);
     UI.chatMessages.scrollTop = UI.chatMessages.scrollHeight; 
+});
+
+function sendEmote(emoteChar) {
+    socket.emit('sendEmote', emoteChar);
+}
+
+socket.on('receiveEmote', (data) => {
+    // Find the seat of the player who sent the emote
+    if (!gameState) return;
+    const playerIndex = gameState.players.findIndex(p => p.socketId === data.socketId);
+    if (playerIndex === -1) return;
+    
+    // We get the rendered seats by relying on their order in the DOM
+    const seats = document.querySelectorAll('.player-seat');
+    
+    // Calculate the DOM index based on the relative ring offset logic in renderPlayers
+    let myIndex = gameState.players.findIndex(p => p.socketId === socket.id);
+    if (myIndex === -1) myIndex = 0;
+    const totalPlayers = gameState.players.length;
+    const relativeIndex = (playerIndex - myIndex + totalPlayers) % totalPlayers;
+    
+    const targetSeat = seats[relativeIndex];
+    
+    if (targetSeat) {
+        const floatDiv = document.createElement('div');
+        floatDiv.className = 'floating-emote';
+        floatDiv.innerText = data.emote;
+        targetSeat.appendChild(floatDiv);
+        
+        // Clean it up after the animation finishes
+        setTimeout(() => { floatDiv.remove(); }, 2000);
+    }
 });
 
 function sendChatMessage() {
