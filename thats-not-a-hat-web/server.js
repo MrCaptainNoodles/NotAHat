@@ -320,6 +320,9 @@ io.on('connection', (socket) => {
                         room.currentRound++;
                         room.players.forEach(p => { p.penalties = 0; }); // Clear cards for new round
                         
+                        // Critical Fix: Reset target index for the new round
+                        room.targetPlayerIndex = null; 
+                        
                         let shuffledItems = [...room.items].sort(() => Math.random() - 0.5);
                         room.players.forEach((p, index) => {
                             p.hand = [{ item: shuffledItems[index], direction: room.itemDirections[shuffledItems[index]] }];

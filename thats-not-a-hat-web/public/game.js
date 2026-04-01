@@ -266,7 +266,7 @@ function render() {
             
             if (amIHost) {
                 const nextBtn = document.createElement('button');
-                nextBtn.innerText = "Next Round";
+                nextBtn.innerText = "Next Hand"; // Changed text!
                 nextBtn.onclick = () => socket.emit('nextRound');
                 UI.controls.appendChild(nextBtn);
             }
@@ -426,7 +426,12 @@ function openPassMenu() {
 
     const currentIdx = gameState.currentPlayerIndex;
     const numPlayers = gameState.players.length;
-    gameState.passDirectionRule = gameState.players[currentIdx].hand[0].direction;
+    
+    // Safety check: ensure the player has a card to pass before opening menu
+    const passingPlayer = gameState.players[currentIdx];
+    if (!passingPlayer || passingPlayer.hand.length === 0) return;
+    
+    gameState.passDirectionRule = passingPlayer.hand[0].direction;
 
     let validTargets = [];
     if (gameState.passDirectionRule === 'right') {
@@ -439,11 +444,15 @@ function openPassMenu() {
         }
     }
 
+    // Force UI refresh of the select menu
     validTargets.forEach(targetIdx => {
-        const opt = document.createElement('option');
-        opt.value = targetIdx;
-        opt.innerText = gameState.players[targetIdx].name;
-        UI.targetSelect.appendChild(opt);
+        const targetPlayer = gameState.players[targetIdx];
+        if (targetPlayer) {
+            const opt = document.createElement('option');
+            opt.value = targetIdx; // Pass the array index exactly as the server expects
+            opt.innerText = targetPlayer.name;
+            UI.targetSelect.appendChild(opt);
+        }
     });
 
     UI.modal.classList.remove('hidden');
