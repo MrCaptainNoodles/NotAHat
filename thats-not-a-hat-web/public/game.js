@@ -5,6 +5,25 @@ const socket = io();
 let gameState = null;
 let currentRoomId = null;
 let amIHost = false;
+let previousPhase = null;
+
+// --- SOUND EFFECTS ---
+const sfx = {
+    start: new Audio('start.mp3'),
+    move: new Audio('move.mp3'),
+    flip: new Audio('flip.mp3'),
+    win: new Audio('win.mp3'),
+    lose: new Audio('lose.mp3'),
+    gameover: new Audio('gameover.mp3')
+};
+
+function playSfx(soundName) {
+    // Resets the sound to the beginning if it's already playing, then plays it
+    if (sfx[soundName]) {
+        sfx[soundName].currentTime = 0;
+        sfx[soundName].play().catch(() => {}); // Catch prevents errors if browser blocks autoplay
+    }
+}
 
 // --- DOM ELEMENTS ---
 const UI = {
@@ -25,7 +44,12 @@ const UI = {
     declareInput: document.getElementById('declare-input'), 
     targetSelect: document.getElementById('target-select'),
     submitPassBtn: document.getElementById('submit-pass-btn'),
-    cancelPassBtn: document.getElementById('cancel-pass-btn')
+    cancelPassBtn: document.getElementById('cancel-pass-btn'),
+    chatContainer: document.getElementById('chat-container'),
+    chatMessages: document.getElementById('chat-messages'),
+    chatInput: document.getElementById('chat-input'),
+    chatSendBtn: document.getElementById('chat-send-btn'),
+    gameOverOverlay: document.getElementById('game-over-overlay')
 };
 
 // Check if a friend sent us a link with a room code!
@@ -46,16 +70,38 @@ window.onload = () => {
 socket.on('stateUpdate', (newState) => {
     gameState = newState;
     amIHost = (gameState.hostId === socket.id);
+    
+    // Check phase transitions for sound effects
+    if (previousPhase !== gameState.phase) {
+        if (previousPhase === 'LOBBY' && gameState.phase === 'ANNOUNCE') playSfx('start');
+        if (previousPhase === 'DRAW' && gameState.phase === 'DRAW_REVEAL') playSfx('flip');
+        if (previousPhase === 'HOLDING' && gameState.phase === 'RESPOND') playSfx('move');
+        if (previousPhase === 'RESPOND' && gameState.phase === 'HOLDING') playSfx('move');
+        if (gameState.phase === 'GAME_OVER') playSfx('gameover');
+        previousPhase = gameState.phase;
+    }
+    
     render();
+});
+
+// Listen for challenge results to play win/lose sounds
+socket.on('challengeResult', (data) => {
+    if (data.isGameOver) return; // We handle the gameover sound in stateUpdate
+    
+    if (data.loserId === socket.id) {
+        playSfx('lose');
+    } else {
+        playSfx('win');
+    }
 });
 
 socket.on('roomCreated', (roomId) => {
     currentRoomId = roomId;
-    // Update the browser URL without refreshing so they can copy-paste it
     window.history.pushState({}, '', `?room=${roomId}`);
     UI.setupControls.classList.add('hidden');
     UI.roomInfo.classList.remove('hidden');
     UI.roomCodeDisplay.innerText = `Room Code: ${roomId}`;
+    UI.chatContainer.classList.remove('hidden'); // Reveal chat when hosting
 });
 
 socket.on('joinedRoom', (roomId) => {
@@ -64,6 +110,7 @@ socket.on('joinedRoom', (roomId) => {
     UI.setupControls.classList.add('hidden');
     UI.roomInfo.classList.remove('hidden');
     UI.roomCodeDisplay.innerText = `Room Code: ${roomId}`;
+    UI.chatContainer.classList.remove('hidden'); // Reveal chat when joining
 });
 
 socket.on('errorMsg', (msg) => {
@@ -98,6 +145,7 @@ function render() {
         UI.lobbyArea.classList.remove('hidden');
         UI.playArea.classList.add('hidden');
         document.body.classList.remove('in-game');
+        UI.gameOverOverlay.classList.add('hidden'); // Hides the big text when a new game starts
         renderLobby();
         return; 
     } else {
@@ -192,15 +240,11 @@ function render() {
             UI.card.innerHTML = `<div style="font-size: 4rem;">💀</div>`; 
             
             const losingPlayer = gameState.players.find(p => p.penalties >= gameState.maxPenalties);
-            UI.status.innerText = `GAME OVER! ${losingPlayer.name} has reached ${gameState.maxPenalties} penalties!`;
+            UI.status.innerText = `GAME OVER! ${losingPlayer.name} has reached ${gameState.maxPenalties} penalties! Returning to lobby...`;
             
-            if (amIHost) {
-                const restartBtn = document.createElement('button');
-                restartBtn.className = "danger";
-                restartBtn.innerText = "Play Again";
-                restartBtn.onclick = () => socket.emit('fullReset');
-                UI.controls.appendChild(restartBtn);
-            }
+            // Plaster their name across the screen
+            UI.gameOverOverlay.innerText = `${losingPlayer.name} LOST!`;
+            UI.gameOverOverlay.classList.remove('hidden');
             break;
     }
 }
@@ -350,3 +394,24 @@ UI.submitPassBtn.onclick = () => {
     });
     UI.modal.classList.add('hidden');
 };
+
+// --- CHAT LOGIC ---
+socket.on('chatMessage', (data) => {
+    const msgDiv = document.createElement('div');
+    msgDiv.innerHTML = `<span class="chat-msg-time">${data.time}</span> <span class="chat-msg-name">${data.name}:</span> <span class="chat-msg-text">${data.message}</span>`;
+    UI.chatMessages.appendChild(msgDiv);
+    UI.chatMessages.scrollTop = UI.chatMessages.scrollHeight; // Auto-scrolls to newest message
+});
+
+function sendChatMessage() {
+    const msg = UI.chatInput.value.trim();
+    if (msg) {
+        socket.emit('chatMessage', msg);
+        UI.chatInput.value = ''; // Clears input field after sending
+    }
+}
+
+UI.chatSendBtn.onclick = sendChatMessage;
+UI.chatInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendChatMessage(); // Let players press Enter to send
+});

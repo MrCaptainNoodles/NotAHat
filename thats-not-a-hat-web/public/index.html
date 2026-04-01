@@ -54,6 +54,16 @@
         </div>
     </div>
 
+    <div id="chat-container" class="hidden">
+        <div id="chat-messages"></div>
+        <div class="chat-input-area">
+            <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off">
+            <button id="chat-send-btn">Send</button>
+        </div>
+    </div>
+
+    <div id="game-over-overlay" class="hidden"></div>
+
     <script src="/socket.io/socket.io.js"></script>
     <script src="game.js"></script>
 </body>

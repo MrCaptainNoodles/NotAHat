@@ -221,8 +221,22 @@ io.on('connection', (socket) => {
         
         if (loser.penalties >= gameState.maxPenalties) {
             gameState.phase = 'GAME_OVER';
+            io.to(myRoomId).emit('challengeResult', { loserId: loser.socketId, isGameOver: true });
+            
+            // Auto-return to lobby after 5 seconds so they can see the game over screen
+            setTimeout(() => {
+                if (rooms[myRoomId]) {
+                    const room = rooms[myRoomId];
+                    room.players.forEach(p => { p.penalties = 0; p.hand = []; });
+                    room.itemDirections = {};
+                    room.phase = 'LOBBY';
+                    syncRoom(myRoomId);
+                }
+            }, 5000);
+
         } else {
             gameState.phase = 'REVEAL';
+            io.to(myRoomId).emit('challengeResult', { loserId: loser.socketId, isGameOver: false });
         }
         syncRoom(myRoomId);
     });
@@ -253,6 +267,29 @@ io.on('connection', (socket) => {
         gameState.itemDirections = {};
         gameState.phase = 'LOBBY';
         syncRoom(myRoomId);
+    });
+
+    socket.on('chatMessage', (msg) => {
+        if (!myRoomId || !rooms[myRoomId]) return;
+        const room = rooms[myRoomId];
+        const player = room.players.find(p => p.socketId === socket.id);
+        if (!player) return;
+
+        // Generate 12-hour timestamp formatting
+        const now = new Date();
+        let hours = now.getHours();
+        let minutes = now.getMinutes();
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12; 
+        minutes = minutes < 10 ? '0' + minutes : minutes;
+        const timeString = hours + ':' + minutes + ' ' + ampm;
+
+        io.to(myRoomId).emit('chatMessage', {
+            time: timeString,
+            name: player.name,
+            message: msg
+        });
     });
 
     socket.on('disconnect', () => {
