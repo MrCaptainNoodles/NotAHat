@@ -371,7 +371,7 @@ button.danger { background-color: var(--accent); color: white; }
 
     .controls {
         position: fixed;
-        bottom: 25px; 
+        bottom: 10px; /* Pushes the button lower, out of the way of the cards */
         left: 50%;
         transform: translateX(-50%);
         width: 90%;
@@ -382,7 +382,7 @@ button.danger { background-color: var(--accent); color: white; }
         align-items: center; 
         gap: 15px;
         z-index: 100; 
-        pointer-events: none; /* Lets your finger tap through the invisible container */
+        pointer-events: none; 
     }
 
     /* Stops the button from trying to stretch into empty space */
