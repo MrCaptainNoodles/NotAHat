@@ -13,9 +13,10 @@ const sfx = {
     move: new Audio('move.mp3'),
     flip: new Audio('flip.mp3'),
     win: new Audio('win.mp3'),
-    champion: new Audio('champion.mp3'), // <-- ADDED THIS LINE
+    champion: new Audio('champion.mp3'),
     lose: new Audio('lose.mp3'),
-    gameover: new Audio('gameover.mp3')
+    gameover: new Audio('gameover.mp3'),
+    tick: new Audio('tick.mp3') // <-- ADDED THE TICKING CLOCK
 };
 
 function playSfx(soundName) {
@@ -83,9 +84,16 @@ socket.on('stateUpdate', (newState) => {
     if (previousPhase !== gameState.phase) {
         if (previousPhase === 'LOBBY' && gameState.phase === 'ANNOUNCE') playSfx('start');
         if (previousPhase === 'DRAW' && gameState.phase === 'DRAW_REVEAL') playSfx('flip');
-        if (previousPhase === 'HOLDING' && gameState.phase === 'RESPOND') playSfx('move');
+        if (previousPhase === 'HOLDING' && gameState.phase === 'RESPOND') playSfx('tick'); // Swapped 'move' for 'tick' to build tension!
         if (previousPhase === 'RESPOND' && gameState.phase === 'HOLDING') playSfx('move');
         if (gameState.phase === 'GAME_OVER') playSfx('gameover');
+        
+        // If the phase changes AWAY from RESPOND, immediately kill the ticking track
+        if (previousPhase === 'RESPOND' && sfx.tick) {
+            sfx.tick.pause();
+            sfx.tick.currentTime = 0;
+        }
+        
         previousPhase = gameState.phase;
     }
     
