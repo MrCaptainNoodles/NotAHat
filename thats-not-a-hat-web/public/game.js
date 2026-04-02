@@ -6,6 +6,7 @@ let gameState = null;
 let currentRoomId = null;
 let amIHost = false;
 let previousPhase = null;
+let tickTimeout = null;
 
 // --- SOUND EFFECTS ---
 const sfx = {
@@ -88,14 +89,22 @@ socket.on('stateUpdate', (newState) => {
     if (previousPhase !== gameState.phase) {
         if (previousPhase === 'LOBBY' && gameState.phase === 'ANNOUNCE') playSfx('start');
         if (previousPhase === 'DRAW' && gameState.phase === 'DRAW_REVEAL') playSfx('flip');
-        if (previousPhase === 'HOLDING' && gameState.phase === 'RESPOND') playSfx('tick'); // Swapped 'move' for 'tick' to build tension!
+        if (previousPhase === 'HOLDING' && gameState.phase === 'RESPOND') {
+            // Start a 5-second delay before playing the ticking sound
+            tickTimeout = setTimeout(() => {
+                playSfx('tick');
+            }, 5000);
+        }
         if (previousPhase === 'RESPOND' && gameState.phase === 'HOLDING') playSfx('move');
         if (gameState.phase === 'GAME_OVER') playSfx('gameover');
         
-        // If the phase changes AWAY from RESPOND, immediately kill the ticking track
-        if (previousPhase === 'RESPOND' && sfx.tick) {
-            sfx.tick.pause();
-            sfx.tick.currentTime = 0;
+        // If the phase changes AWAY from RESPOND, immediately kill the ticking track and cancel the timer
+        if (previousPhase === 'RESPOND') {
+            clearTimeout(tickTimeout);
+            if (sfx.tick) {
+                sfx.tick.pause();
+                sfx.tick.currentTime = 0;
+            }
         }
         
         previousPhase = gameState.phase;
