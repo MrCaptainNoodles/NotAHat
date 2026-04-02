@@ -90,10 +90,15 @@ socket.on('stateUpdate', (newState) => {
         if (previousPhase === 'LOBBY' && gameState.phase === 'ANNOUNCE') playSfx('start');
         if (previousPhase === 'DRAW' && gameState.phase === 'DRAW_REVEAL') playSfx('flip');
         if (previousPhase === 'HOLDING' && gameState.phase === 'RESPOND') {
-            // Start a 5-second delay before playing the ticking sound
-            tickTimeout = setTimeout(() => {
-                playSfx('tick');
-            }, 5000);
+            // Check if this specific client is the target player on the hot seat
+            const amITarget = (gameState.targetPlayerIndex !== null && gameState.players[gameState.targetPlayerIndex].socketId === socket.id);
+            
+            if (amITarget) {
+                // Start a 5-second delay before playing the ticking sound ONLY for the target
+                tickTimeout = setTimeout(() => {
+                    playSfx('tick');
+                }, 5000);
+            }
         }
         if (previousPhase === 'RESPOND' && gameState.phase === 'HOLDING') playSfx('move');
         if (gameState.phase === 'GAME_OVER') playSfx('gameover');
