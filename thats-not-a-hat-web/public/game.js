@@ -155,6 +155,15 @@ socket.on('joinedRoom', (roomId) => {
 
 socket.on('errorMsg', (msg) => {
     alert(msg);
+    // If the server rejected the join, re-enable the buttons so they can try again
+    UI.hostBtn.disabled = false;
+    UI.joinBtn.disabled = false;
+});
+
+socket.on('kicked', (msg) => {
+    alert(msg);
+    // Force reload the page to completely clear their state and drop them back at the welcome screen
+    window.location.href = '/'; 
 });
 
 // --- RENDER LOGIC ---
@@ -162,7 +171,27 @@ function renderLobby() {
     UI.lobbyPlayerList.innerHTML = '';
     gameState.players.forEach(p => {
         const pDiv = document.createElement('div');
-        pDiv.innerText = `👤 ${p.name}`;
+        pDiv.style.display = 'flex';
+        pDiv.style.justifyContent = 'space-between';
+        pDiv.style.alignItems = 'center';
+        pDiv.style.marginBottom = '8px';
+        
+        const nameSpan = document.createElement('span');
+        const hostIcon = (gameState.hostId === p.socketId) ? '👑 ' : '👤 ';
+        nameSpan.innerText = `${hostIcon}${p.name}`;
+        pDiv.appendChild(nameSpan);
+
+        // Add Kick Button exclusively for the Host
+        if (amIHost && p.socketId !== socket.id) {
+            const kickBtn = document.createElement('button');
+            kickBtn.innerText = "Kick";
+            kickBtn.className = "danger";
+            kickBtn.style.padding = "5px 10px";
+            kickBtn.style.fontSize = "0.8rem";
+            kickBtn.onclick = () => socket.emit('kickPlayer', p.socketId);
+            pDiv.appendChild(kickBtn);
+        }
+
         UI.lobbyPlayerList.appendChild(pDiv);
     });
 
@@ -412,6 +441,11 @@ function renderPlayers() {
 UI.hostBtn.onclick = () => {
     const name = UI.playerNameInput.value.trim();
     if (!name) return alert("Please enter your name first!");
+    
+    // Disable buttons instantly to prevent double-clicks
+    UI.hostBtn.disabled = true;
+    UI.joinBtn.disabled = true;
+    
     socket.emit('hostGame', name);
     UI.playerNameInput.value = ''; 
 };
@@ -419,6 +453,10 @@ UI.hostBtn.onclick = () => {
 UI.joinBtn.onclick = () => {
     const name = UI.playerNameInput.value.trim();
     if (!name) return alert("Please enter your name first!");
+    
+    // Disable buttons instantly to prevent double-clicks
+    UI.hostBtn.disabled = true;
+    UI.joinBtn.disabled = true;
     
     if (currentRoomId) {
         // Joining via a shared URL parameter

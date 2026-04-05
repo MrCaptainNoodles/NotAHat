@@ -23,7 +23,7 @@ function createGameState(hostSocketId) {
             'radio', 'gloves', 'knife', 'gem', 'pyramid',
             'coin', 'floppy disk', 'pliers', 'boots', 'trashcan',
         'crowbar', 'lighter', 'sun', 'moon', 'spoon',
-    'ball of yarn'],
+    'ball of yarn', 'boomstick'],
         directions: ['left', 'right', 'any'],
         currentPlayerIndex: 0,
         targetPlayerIndex: null,
@@ -58,6 +58,8 @@ io.on('connection', (socket) => {
 
     // --- LOBBY LOGIC ---
     socket.on('hostGame', (name) => {
+        if (myRoomId) return; // Prevent multiple requests if button is double-clicked
+        
         const roomId = generateRoomCode();
         myRoomId = roomId;
         socket.join(roomId);
@@ -79,6 +81,8 @@ io.on('connection', (socket) => {
     });
 
     socket.on('joinGame', (data) => {
+        if (myRoomId) return; // Prevent multiple requests if button is double-clicked
+        
         const name = data.name;
         const roomId = data.roomId.toUpperCase();
         const room = rooms[roomId];
@@ -118,6 +122,38 @@ io.on('connection', (socket) => {
         
         socket.emit('joinedRoom', roomId);
         syncRoom(roomId);
+    });
+
+    socket.on('kickPlayer', (targetSocketId) => {
+        if (!myRoomId || !rooms[myRoomId]) return;
+        const room = rooms[myRoomId];
+        
+        // Only the host can kick, and they cannot kick themselves
+        if (room.hostId !== socket.id || targetSocketId === socket.id) return;
+        
+        const playerIndex = room.players.findIndex(p => p.socketId === targetSocketId);
+        if (playerIndex !== -1) {
+            // Remove the player
+            room.players.splice(playerIndex, 1);
+            
+            // Re-assign IDs to maintain array alignment
+            room.players.forEach((p, index) => p.id = index);
+            
+            // Boot the socket out of the room
+            io.to(targetSocketId).emit('kicked', 'You have been kicked by the host.');
+            io.in(targetSocketId).socketsLeave(myRoomId);
+            
+            // If they were kicked mid-game, emergency abort back to the lobby
+            if (room.phase !== 'LOBBY') {
+                room.phase = 'LOBBY';
+                room.players.forEach(p => { p.penalties = 0; p.totalScore = 0; p.hand = []; });
+                room.itemDirections = {};
+                room.superlatives = null;
+                io.to(myRoomId).emit('chatMessage', { name: "System", message: "A player was kicked. The game has been returned to the lobby." });
+            }
+            
+            syncRoom(myRoomId);
+        }
     });
 
     // --- GAMEPLAY LOGIC ---
